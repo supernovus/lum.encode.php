@@ -85,6 +85,15 @@ class Hash
   }
 
   /**
+   * Return a Safe64 encoded string. This finalizes the hash object.
+   */
+  public function safe64 ($useTildes=false)
+  {
+    $binary = $this->final(True);
+    return Safe64::encode($binary, $useTildes);
+  }
+
+  /**
    * Return a base91 encoded string. This finalizes the hash object.
    */
   public function base91 ()
