@@ -14,11 +14,19 @@
   {
     "php": "^7.0"
   },
+  "require-dev":
+  {
+    "lum/lum-test": "^2.1 || dev-master"
+  },  
   "autoload":
   {
     "psr-4":
     {
       "Lum\\Encode\\": "lib"
     }
+  },
+  "scripts":
+  {
+    "test": "lumtest"
   }
 }

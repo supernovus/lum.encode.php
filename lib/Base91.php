@@ -40,7 +40,7 @@ class Base91
     $b = $n = 0;
     $o = '';
   	for ($i = 0; $i < $l; ++$i) {
-  		$c = $b91_dectab[$d{$i}];
+  		$c = $b91_dectab[$d[$i]];
   		if (!isset($c))
   			continue;
   		if ($v < 0)
@@ -76,7 +76,7 @@ class Base91
     $b = $n = 0;
     $o = '';
   	for ($i = 0; $i < $l; ++$i) {
-  		$b |= ord($d{$i}) << $n;
+  		$b |= ord($d[$i]) << $n;
   		$n += 8;
   		if ($n > 13) {
   			$v = $b & 8191;

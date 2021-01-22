@@ -259,7 +259,7 @@ class UBJSON {
 		
 		$val = null;
 		++$this->_offset;
-		$token = $this->_source{$this->_offset-1};
+		$token = $this->_source[$this->_offset-1];
 		$this->_token = self::DATA;
 		
 		switch ($token) {
@@ -303,7 +303,7 @@ class UBJSON {
 			case self::HIGH_PRECISION:
 				++$this->_offset;
 				$len = 0;
-				switch ($this->_source{$this->_offset-1}) {
+				switch ($this->_source[$this->_offset-1]) {
 					case self::INT8:
 						$len = $this->_unpack('c', 1);
 						break;
