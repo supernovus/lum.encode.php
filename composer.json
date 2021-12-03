@@ -16,7 +16,7 @@
   },
   "require-dev":
   {
-    "lum/lum-test": "^2.1 || dev-master"
+    "lum/lum-test": "^2.1"
   },  
   "autoload":
   {
@@ -28,5 +28,12 @@
   "scripts":
   {
     "test": "lumtest"
+  },
+  "extra":
+  {
+    "branch-alias":
+    {
+      "dev-main": "1.x-dev"
+    }
   }
 }
