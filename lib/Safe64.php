@@ -424,4 +424,16 @@ class Safe64
     }
   }
 
+  public static function encodeData (mixed $data, array $opts=[]): string
+  {
+    $s64 = new static($opts);
+    return $s64->encode($data);
+  }
+
+  public static function decodeData (string $string, array $opts=[]): mixed
+  {
+    $s64 = new static($opts);
+    return $s64->decode($string);
+  }
+
 }

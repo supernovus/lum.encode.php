@@ -80,17 +80,16 @@ class Hash
   public function base64 ()
   {
     $binary = $this->final(True);
-    $base64 = base64_encode($binary);
-    return $base64;
+    return base64_encode($binary);
   }
 
   /**
    * Return a Safe64 encoded string. This finalizes the hash object.
    */
-  public function safe64 ($useTildes=false)
+  public function safe64 ()
   {
     $binary = $this->final(True);
-    return Safe64::encode($binary, $useTildes);
+    return Safe64::encodeData($binary);
   }
 
   /**
@@ -99,8 +98,7 @@ class Hash
   public function base91 ()
   {
     $binary = $this->final(True);
-    $base91 = Base91::encode($binary);
-    return $base91;
+    return Base91::encode($binary);
   }
 
   /**
