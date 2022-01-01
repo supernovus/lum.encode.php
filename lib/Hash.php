@@ -25,14 +25,18 @@ class Hash
    *
    * @param mixed  $algorithm  If a string, this is the hashing algorithm.
    *                           If a HashContext object, make a copy of it.
-   * @param int   $options     Any PHP hash() options to use.
-   * @param mixed $key         Optional hash key to use.
+   * @param int   $flags       (Optional) hash() flags.
+   * @param mixed $key         (Optional) hash() key.
+   * @param array $options     (Optional) hash() options.
    */
-  public function __construct ($algorithm, $options=0, $key=Null)
+  public function __construct (mixed $algorithm, 
+    int $flags=0, 
+    string $key='', 
+    array $options=[])
   {
     if (is_string($algorithm))
     {
-      $this->hash = hash_init($algorithm, $options, $key);
+      $this->hash = hash_init($algorithm, $flags, $key, $options);
     }
     elseif ($algorithm instanceof \HashContext)
     {
