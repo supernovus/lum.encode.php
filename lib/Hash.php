@@ -81,7 +81,7 @@ class Hash
   /**
    * Return a base64 encoded string. This finalizes the hash object.
    */
-  public function base64 ()
+  public function base64 (): string
   {
     $binary = $this->final(True);
     return base64_encode($binary);
@@ -90,16 +90,24 @@ class Hash
   /**
    * Return a Safe64 encoded string. This finalizes the hash object.
    */
-  public function safe64 ()
+  public function safe64 (bool $withHeader=false, array $opts=[]): string
   {
     $binary = $this->final(True);
-    return Safe64::encodeData($binary);
+    if ($withHeader)
+    {
+      return Safe64::encodeData($binary, $opts);
+    }
+    else
+    {
+      $ut = (isset($opts['useTildes'])) ? $opts['useTildes'] : false;
+      return Safe64::encodeStr($binary, $ut);
+    }
   }
 
   /**
    * Return a base91 encoded string. This finalizes the hash object.
    */
-  public function base91 ()
+  public function base91 (): string
   {
     $binary = $this->final(True);
     return Base91::encode($binary);

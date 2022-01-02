@@ -12,6 +12,8 @@ define('SYS_LITTLE_ENDIAN', pack('S', 0xFF) === pack('v', 0xFF));
 /**
  * See https://github.com/dizews/php-ubjson for original source.
  * This version implements Draft-9 of the UBJSON format.
+ *
+ * TODO: Update to Draft-12.
  */
 class UBJSON {
 

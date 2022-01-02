@@ -69,4 +69,16 @@ class Options
     }
   }
 
+  public function getHeader(bool $full=false): string
+  {
+    if (empty($this->string) || $this->offset === 0)
+    { // No current string, or found header. Generate one.
+      return Header::build($this->format, $this->type, $this->version, $full);
+    }
+    else
+    { // Extract the header from the string.
+      return substr($this->string, 0, $this->offset);
+    }
+  }
+
 }

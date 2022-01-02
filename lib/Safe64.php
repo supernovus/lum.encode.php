@@ -3,25 +3,32 @@
 namespace Lum\Encode;
 
 use Lum\Exception;
-use Lum\Encode\Safe64\{Type, Format, Options, HasFormatType};
+use Lum\Encode\Safe64\{Type, Format, Options, Header, HasFormatType};
 
 /**
  * Safe64 version 3.
  *
- * This is a URL-safe variant of Base64, with a bunch of extras.
+ * This is a URL-safe variant of Base64, with the Data extension, and a 
+ * bunch of extras thrown in for good measure.
  *
  * Replaces `+` with `-`, and `/` with `_`.
  * By default it also strips any `=` characters from the end of the string.
  *
- * It can also encode PHP arrays and object using a few serialization formats.
+ * Using the Data extension, it can also encode PHP arrays and object using 
+ * a few serialization formats.
  *
  *   - JSON       (default, simplest, fastest)
  *   - Serialize  (most complex, largest; for advanced objects)
  *   - UBJSON     (a compact binary format, slowest; for special cases)
  *
  * This is the third major version of the library, and breaks compatibility.
+ *
  * While previous versions used all static methods, this version has enough
  * options that using an instance makes more sense now.
+ *
+ * The Data extension is not fully supported in different language bindings.
+ * Particularly the Serialize format is *ONLY* supported in PHP, and the JSON
+ * format is the only one currently supported in Javascript and Kotlin/JVM.
  */
 class Safe64
 {
@@ -61,19 +68,13 @@ class Safe64
   const O_AH = 'addHeader';
   const O_FH = 'fullHeader';
   const O_FT = 'forceType';
+  const O_ST = 'strict';
 
   const M_UT = 'setUseTildes';
   const M_AH = 'setAddHeader';
   const M_FH = 'setFullHeader';
   const M_FT = 'setForceType';
-
-  const H_V  = 'SV';
-  const H_F  = 'F';
-  const H_T  = 'T';
-
-  const H_V_L = 2;
-  const H_F_L = 1;
-  const H_T_L = 1;
+  const M_ST = 'setStrict';
 
   protected Format $format     = Format::JSON;
   protected Type   $type       = Type::Array;
@@ -81,6 +82,7 @@ class Safe64
   protected bool   $addHeader  = true;
   protected bool   $fullHeader = false;
   protected bool   $forceType  = false;
+  protected bool   $strict     = false;
 
   /**
    * Build a new Safe64 transcoder instance.
@@ -102,6 +104,8 @@ class Safe64
    *                Default: `false`
    *  'forceType'   (bool) When decoding, our `type` overrides the _header_.
    *                Some caveats apply, see `Type` for more details.
+   *                Default: `false`
+   *  'strict'      (bool) Whether to use strict base64 decoding.
    *                Default: `false`
    *
    */
@@ -180,11 +184,120 @@ class Safe64
     return $this->forceType;
   }
 
+  // Internal method for formatting padded hexidecimal integers.
+  protected static function hex (int $number, int $len): string
+  {
+    return str_pad(dechex($number), $len, '0', STR_PAD_LEFT);
+  }
+
+  // Internal method to add a header to a string.
+  protected function make_header (Format $format, Type $type, 
+    ?int $ver=null): string
+  {
+    return Header::build($format, $type, $ver, $this->fullHeader);
+  }
+
+  // Internal method to look for a header, and determine format, etc.
+  protected function parse_header (string $s): Options
+  {
+    $opts = new Options($this->format, $this->type);
+    return Header::parse($s, $opts);
+  }
+
   /**
-   * Encode a string into Safe64 format.
+   * Static utility function to simply strip a V3 header off.
+   *
+   * @param string $safe64  The input string.
+   *
+   * @return string  The raw Safe64 string with no V3 header.
+   */
+  public static function stripHeader (string $safe64)
+  {
+    $opts = Header::parse($safe64);
+    return $opts->getString();
+  }
+
+  /**
+   * Static function to convert Base64 into *raw* Safe64 (no headers.)
+   *
+   * @param string $base64     The Base64 string to convert.
+   * @param bool   $useTildes  (Optional) Convert `=` into `~` (old V1 format.)
+   *                           Default: `false`
+   *
+   * @return string  The Safe64 string.
+   */
+  public static function fromBase64 (string $base64, bool $useTildes=false)
+  {
+    if ($useTildes)
+    {
+      $base64 = strtr($base64, '+/=', '-_~');
+    }
+    else
+    {
+      $base64 = strtr($base64, '+/', '-_');
+      $base64 = str_replace('=', '', $base64);
+    }
+    return $base64;
+  }
+
+  /**
+   * Static function to convert *raw* Safe64 into Base64.
+   *
+   * @param string $safe64  The Safe64 string to convert.
+   *
+   *   Does not matter if the `useTildes` mode was in use or not, this
+   *   handles both forms automatically.
+   *
+   * @return string  The Base64 string.
+   */
+  public static function toBase64 (string $safe64)
+  {
+    $base64 = strtr($safe64, '-_~', '+/=');
+    $base64 .= substr("===", ((strlen($base64)+3)%4));
+    return $base64;
+  }
+
+  /**
+   * Encode an arbitrary string to *raw* Safe64 format (no headers).
+   *
+   * @param string $data       The data string we are encoding.
+   * @param bool   $useTildes  (Optional) Passed to `fromBase64()`
+   *
+   * @return string  The Safe64 string.
+   */
+  public static function encodeStr (string $data, bool $useTildes=false)
+    : string
+  {
+    $base64 = base64_encode($data);
+    return static::fromBase64($base64, $useTildes);
+  }
+
+  /**
+   * Decode a *raw* Safe64 string into an arbitrary data string again.
+   *
+   * @param string $data    The Safe64 string to decode.
+   * @param bool   $strict  (Optional) Use strict-mode when decoding.
+   *
+   * @return string|false
+   *
+   *   If `$strict` is `false`, this will always return a string.
+   *   If `$strict` is `true`, this will return `false` if invalid characters
+   *   are found in the input string.
+   *
+   */
+  public static function decodeStr (string $data, bool $strict=false)
+    : string|false
+  {
+    $base64 = static::toBase64($data);
+    return base64_decode($base64, $strict);
+  }
+
+  /**
+   * Encode a string into Safe64 format (with optional V3 header.)
    *
    * Unless you have a specific reason to call this directly, you should 
-   * just use the `encode()` method instead.
+   * just use the `encode()` method for V3 headers, or the `encodeStr()` 
+   * static method for the classic Safe64 format with no headers.
    *
    * @param string $data Data to encode.
    *
@@ -200,111 +313,30 @@ class Safe64
    */
   public function encodeString (string $data, bool $addHeader=false): string
   {
-    $base64 = base64_encode($data);
-    if ($this->useTildes)
-    {
-      $base64 = strtr($base64, '+/=', '-_~');
-    }
-    else
-    {
-      $base64 = strtr($base64, '+/', '-_');
-      $base64 = str_replace('=', '', $base64);
-    }
-
+    $safe64 = static::encodeStr($data, $this->useTildes);
     if ($addHeader && $this->addHeader)
     { // We want to add the header, even though it's a string.
       $header = $this->make_header(Format::NONE, Type::String);
-      $base64 = $header.$base64;
+      $safe64 = $header.$safe64;
     }
-
-    return $base64;    
-  }
-
-  protected static function hex (int $number, int $len): string
-  {
-    return str_pad(dechex($number), $len, '0', STR_PAD_LEFT);
-  }
-
-  // Internal method to add a header to a string.
-  protected function make_header (Format $format, Type $type, 
-    ?int $ver=null): string
-  {
-    if (!isset($ver)) $ver = self::VERSION;
-
-    $h  = self::H_V;
-    $h .= self::hex($ver, self::H_V_L);
-    if ($this->fullHeader || $format !== Format::NONE)
-    { // Include a format header field.
-      $f = $format->value;
-      $h .= self::H_F;
-      $h .= self::hex($f, self::H_F_L);
-      if ($this->fullHeader 
-        || ($type !== Type::String && $format !== Format::SERIAL))
-      { // Include a type header field.
-        $t = $type->value;
-        $h .= self::H_T;
-        $h .= self::hex($t, self::H_T_L);
-      }
-    }
-
-    return $h;
-  }
-
-  // Internal method to look for a header, and determine format, etc.
-  protected function parse_header (string $s): Options
-  {
-    $opts = new Options($this->format, $this->type);
-    $o   = 0;
-    $l = strlen(self::H_V);
-    if (substr($s, $o, $l) === self::H_V)
-    { // The first two characters match. Continue parsing the header.
-      $o = $l;
-      $l = self::H_V_L;
-      $ver = substr($s, $o, $l);
-      $opts->setVersion($ver);
-      $o += $l;
-      $l = strlen(self::H_F);
-      if (substr($s, $o, $l) === self::H_F)
-      { // The format tag was found.
-        $o += $l;
-        $l = self::H_F_L;
-        $fmt = intval(substr($s, $o, $l), 16);
-        $opts->setFormat($fmt);
-        $o += $l;
-        $l = strlen(self::H_T);
-        if (substr($s, $o, $l) === self::H_T)
-        { // The type tag was found.
-          $o += $l;
-          $l = self::H_F_T;
-          $type = intval(substr($s, $o, $l), 16);
-          $opts->setType($type);
-          $o += $l;
-        }
-      }
-      elseif ($this->format !== Format::NONE)
-      { // The only format we skip the format header on is NONE.
-        $opts->setFormat(Format::NONE);
-      }
-    }
-
-    // Okay, set the string, and if applicable, offset.
-    $opts->setString($s, $o);
-
-    return $opts;
+    return $safe64;    
   }
 
   /**
    * Decode a Safe64 string back to a non-encoded string.
    *
    * Unless you have a specific reason to call this directly, you should 
-   * just use the `decode()` method instead.
+   * just use the `decode()` method for full V3 support, or the `decodeStr()`
+   * static method for classic Safe64 strings with no headers.
    *
    * @param string $string  The Safe64-encoded string.
    *
    *   It does not matter if the `$useTildes` format was used or not,
    *   as this will handle both versions of Safe64 automatically.
    *
-   * @return string 
+   * @return string  The data string.
+   *
+   * @throws Exception  If `strict` is `true` and invalid characters are found.
    */
   public function decodeString (Options|string $input): string
   {
@@ -312,12 +344,12 @@ class Safe64
     { // Make sure we strip any header that might be on the string.
       $input = $this->parse_header($input);
     }
-
-    $string = $input->getString();
-    $base64 = strtr($string, '-_~', '+/=');
-    $base64 .= substr("===", ((strlen($base64)+3)%4));
-
-    return base64_decode($base64, $strict);
+    $decoded = static::decodeStr($input->getString(), $this->strict);
+    if (!is_string($decoded))
+    {
+      throw new Exception("Invalid characters in encoded string");
+    }
+    return $decoded;
   }
 
   /**
