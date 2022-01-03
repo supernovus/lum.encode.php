@@ -3,7 +3,6 @@
 namespace Lum\Encode\Safe64;
 
 use \Lum\Exception;
-use \Lum\Encode\Safe64 as S64;
 
 // Internal class not needed for outside use.
 class Options
@@ -61,7 +60,7 @@ class Options
   {
     if ($wantStr)
     {
-      return S64::hex($this->version, S64::H_V_L);
+      return Header::hex($this->version, Header::H_V_L);
     }
     else
     {

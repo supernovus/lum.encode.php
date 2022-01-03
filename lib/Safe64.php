@@ -184,12 +184,6 @@ class Safe64
     return $this->forceType;
   }
 
-  // Internal method for formatting padded hexidecimal integers.
-  protected static function hex (int $number, int $len): string
-  {
-    return str_pad(dechex($number), $len, '0', STR_PAD_LEFT);
-  }
-
   // Internal method to add a header to a string.
   protected function make_header (Format $format, Type $type, 
     ?int $ver=null): string

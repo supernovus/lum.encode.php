@@ -15,6 +15,14 @@ class Header
   const H_T_L = 1;
 
   /**
+   * Format an integer as a hex number of a set length, padded with zeros.
+   */
+  public static function hex (int $number, int $len): string
+  {
+    return str_pad(dechex($number), $len, '0', STR_PAD_LEFT);
+  }
+
+  /**
    * Build a V3 header which can be prepended to an encoded string.
    */
   public static function build (
