@@ -363,7 +363,7 @@ class Safe64
       throw new Exception("encode() impossible format?");
     }
 
-    return $this->encodeString($encoded);    
+    return $this->encode_string($encoded);    
   }
 
   /** 
@@ -376,7 +376,7 @@ class Safe64
   public function decode (string $string): mixed
   {
     $opts = $this->parse_header($string);
-    $decoded = $this->decodeString($opts);
+    $decoded = $this->decode_string($opts);
 
     $format = $opts->getFormat();
     $type   = $opts->getType();
