@@ -83,6 +83,7 @@ class Safe64
   protected bool   $fullHeader = false;
   protected bool   $forceType  = false;
   protected bool   $strict     = false;
+  protected bool   $encodeStr  = false;
 
   /**
    * Build a new Safe64 transcoder instance.
@@ -104,6 +105,11 @@ class Safe64
    *                Default: `false`
    *  'forceType'   (bool) When decoding, our `type` overrides the _header_.
    *                Some caveats apply, see `Type` for more details.
+   *                Default: `false`
+   *  'encodeStr'   (bool) If this is `true` we will encode strings passed to
+   *                the `encode()` method using the current format.
+   *                If it is `false` we assume strings passed are already
+   *                in the current format.
    *                Default: `false`
    *  'strict'      (bool) Whether to use strict base64 decoding.
    *                Default: `false`
@@ -286,53 +292,20 @@ class Safe64
     return base64_decode($base64, $strict);
   }
 
-  /**
-   * Encode a string into Safe64 format (with optional V3 header.)
-   *
-   * Unless you have a specific reason to call this directly, you should 
-   * just use the `encode()` method for V3 headers, or the `encodeStr()` 
-   * static method for the classic Safe64 format with no headers.
-   *
-   * @param string $data Data to encode.
-   *
-   *   May be any string encoding, or raw binary data in a PHP string.
-   *
-   * @param bool $addHeader (Optional) Add a V3 header to the string.
-   * 
-   *   Only if the `addHeader` property is also `true`. This is not really
-   *   meant for end-user calls, but is used by `encode()` when passing
-   *   strings to this method.
-   *
-   * @return string  The encoded string.
-   */
-  public function encodeString (string $data, bool $addHeader=false): string
+  // Internal method to encode a string and add a header.
+  protected function encode_string (string $data): string
   {
     $safe64 = static::encodeStr($data, $this->useTildes);
     if ($addHeader && $this->addHeader)
     { // We want to add the header, even though it's a string.
-      $header = $this->make_header(Format::NONE, Type::String);
+      $header = $this->make_header($this->format, $this->type);
       $safe64 = $header.$safe64;
     }
     return $safe64;    
   }
 
-  /**
-   * Decode a Safe64 string back to a non-encoded string.
-   *
-   * Unless you have a specific reason to call this directly, you should 
-   * just use the `decode()` method for full V3 support, or the `decodeStr()`
-   * static method for classic Safe64 strings with no headers.
-   *
-   * @param string $string  The Safe64-encoded string.
-   *
-   *   It does not matter if the `$useTildes` format was used or not,
-   *   as this will handle both versions of Safe64 automatically.
-   *
-   * @return string  The data string.
-   *
-   * @throws Exception  If `strict` is `true` and invalid characters are found.
-   */
-  public function decodeString (Options|string $input): string
+  // Internal method to parse a header from a string and decode the string.
+  protected function decode_string (Options|string $input): string
   {
     if (is_string($input))
     { // Make sure we strip any header that might be on the string.
@@ -365,8 +338,8 @@ class Safe64
   public function encode (mixed $data): string
   {
     if (is_string($data))
-    { // It's a string already, sending it to encodeString();
-      return $this->encodeString($data, true);
+    { // It's a string already, sending it directly to encode_string();
+      return $this->encode_string($data);
     }
 
     if ($this->format === Format::JSON)
@@ -390,13 +363,7 @@ class Safe64
       throw new Exception("encode() impossible format?");
     }
 
-    if ($this->addHeader)
-    { // Add a header.
-      $header = $this->make_header($this->format, $this->type);
-      $encoded = $header.$encoded;
-    }
-
-    return $this->encodeString($encoded, false);
+    return $this->encodeString($encoded);    
   }
 
   /** 
