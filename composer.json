@@ -12,7 +12,8 @@
   ],
   "require":
   {
-    "lum/lum-compat": "^2.0"
+    "lum/lum-compat": "^2.6",
+    "lum/lum-ubjson": "^1.0"
   },
   "require-dev":
   {

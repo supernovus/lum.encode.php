@@ -2,7 +2,7 @@
 
 namespace Lum\Encode\Safe64;
 
-use \Lum\Encode\Safe64 as S64;
+use Lum\Encode\Safe64 as S64;
 
 class Header
 {
@@ -64,7 +64,7 @@ class Header
     $o   = 0;
     $l = strlen(self::H_V);
     if (substr($s, $o, $l) === self::H_V)
-    { // The first two characters match. Continue parsing the header.
+    { // The string starts with the header marker, continue parsing.
       $o = $l;
       $l = self::H_V_L;
       $ver = substr($s, $o, $l);

@@ -56,7 +56,11 @@ class Safe64
    *       - f  = format  (int, optional if `Format::NONE`)
    *       - t  = type    (int, optional if `Type::String` or `Format::SERIAL`)
    *
-   *     Example: SV03F1T1 (ver = 3, format = JSON, type = Array).
+   *     Examples: 
+   *
+   *     - `SV03F1T1` (ver = 3, format = JSON,   type = Array)
+   *     - `SV03F2`   (ver = 3, format = SERIAL, type = *)
+   *     - `SV03`     (ver = 3, format = NONE,   type = String)
    *
    */
   const VERSION = 3;
@@ -64,20 +68,15 @@ class Safe64
   const O_F  = 'format';
   const O_T  = 'type';
 
-  const O_UT = 'useTildes';
-  const O_AH = 'addHeader';
-  const O_FH = 'fullHeader';
-  const O_FT = 'forceType';
-  const O_ST = 'strict';
-
-  const M_UT = 'setUseTildes';
-  const M_AH = 'setAddHeader';
-  const M_FH = 'setFullHeader';
-  const M_FT = 'setForceType';
-  const M_ST = 'setStrict';
+  const O_BOOL_PRE = 'set';
+  const O_BOOL_MAP = 
+  [
+    'useTildes', 'addHeader', 'fullHeader', 'forceType', 'strict', 'encodeStr',
+  ];
 
   protected Format $format     = Format::JSON;
   protected Type   $type       = Type::Array;
+
   protected bool   $useTildes  = false;
   protected bool   $addHeader  = true;
   protected bool   $fullHeader = false;
@@ -129,22 +128,23 @@ class Safe64
       $this->setType($opts[self::O_T]);
     }
 
-    $boolOpts =
-    [ // A map of option name to setter method.
-      self::O_UT => self::M_UT,
-      self::O_AH => self::M_AH,
-      self::O_FH => self::M_FH,
-      self::O_FT => self::M_FT,
-    ];
+    $prefix = static::O_BOOL_PRE;
 
-    foreach ($boolOpts as $opt => $meth)
-    { // If the option is found, call the setter method.
+    foreach (static::O_BOOL_MAP as $opt => $meth)
+    { 
+      if (is_numeric($opt))
+      { // A flat list item, we have special logic for this.
+        $opt = $meth;
+        $meth = $prefix.ucfirst($opt);
+      }
+
       if (isset($opts[$opt]) && is_bool($opts[$opt]))
-      {
+      { // Option was found and was a boolean, pass it to the method.
         $this->$meth($opts[$opt]);
       }
     }
-  }
+
+  } // __construct()
 
   public function setUseTildes(bool $use): static
   {
@@ -190,11 +190,26 @@ class Safe64
     return $this->forceType;
   }
 
-  // Internal method to add a header to a string.
-  protected function make_header (Format $format, Type $type, 
-    ?int $ver=null): string
+  public function setStrict(bool $strict): static
   {
-    return Header::build($format, $type, $ver, $this->fullHeader);
+    $this->strict = $strict;
+    return $this;
+  }
+
+  public function getStrict(): bool
+  {
+    return $this->strict;
+  }
+
+  public function setEncodeStr(bool $encode): static
+  {
+    $this->encodeStr = $encode;
+    return $this;
+  }
+
+  public function getEncodeStr(): bool
+  {
+    return $this->encodeStr;
   }
 
   // Internal method to look for a header, and determine format, etc.
@@ -296,9 +311,15 @@ class Safe64
   protected function encode_string (string $data): string
   {
     $safe64 = static::encodeStr($data, $this->useTildes);
-    if ($addHeader && $this->addHeader)
-    { // We want to add the header, even though it's a string.
-      $header = $this->make_header($this->format, $this->type);
+    if ($this->addHeader)
+    { // Add a header.
+      $header 
+      = Header::build(
+        $this->format, 
+        $this->type, 
+        static::VERSION, 
+        $this->fullHeader
+      );
       $safe64 = $header.$safe64;
     }
     return $safe64;    
@@ -337,7 +358,7 @@ class Safe64
    */
   public function encode (mixed $data): string
   {
-    if (is_string($data))
+    if (is_string($data) && !$this->encodeStr)
     { // It's a string already, sending it directly to encode_string();
       return $this->encode_string($data);
     }
