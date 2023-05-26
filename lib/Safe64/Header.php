@@ -82,7 +82,7 @@ class Header
         if (substr($s, $o, $l) === self::H_T)
         { // The type tag was found.
           $o += $l;
-          $l = self::H_F_T;
+          $l = self::H_T_L;
           $type = intval(substr($s, $o, $l), 16);
           $opts->setType($type);
           $o += $l;
